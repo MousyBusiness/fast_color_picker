@@ -7,84 +7,89 @@ import 'constants.dart';
 final Map<int, double> _correctSizes = {};
 final PageController pageController = PageController(keepPage: true);
 
-class FastColorPicker extends StatelessWidget {
+class FastColorPicker extends StatefulWidget {
   final Color selectedColor;
-  final List<Color>? colors1;
-  final List<Color>? colors2;
-  final List<Color>? colors3;
+  final List<List<Color>> colors;
   final IconData? icon;
   final Function(Color) onColorSelected;
 
-  const FastColorPicker({
+  FastColorPicker({
     Key? key,
     this.icon,
     this.selectedColor = Colors.white,
-    this.colors1,
-    this.colors2,
-    this.colors3,
+    List<Color>? colors1,
+    List<Color>? colors2,
+    List<Color>? colors3,
     required this.onColorSelected,
-  }) : super(key: key);
+  })  : colors = [
+          colors1 ?? Constants.colors1,
+          colors2 ?? Constants.colors2,
+          colors3 ?? Constants.colors3,
+        ],
+        super(key: key);
+
+  @override
+  State<FastColorPicker> createState() => _FastColorPickerState();
+}
+
+class _FastColorPickerState extends State<FastColorPicker> {
+  int index = 0;
+
+  Widget _buildColorRow(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      key: ValueKey(index),
+      children: createColors(context, widget.colors[index]),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 66,
-      width: MediaQuery.of(context).size.width,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            children: <Widget>[
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                ),
-                child: SelectedColor(
-                  icon: icon,
-                  selectedColor: selectedColor,
-                ),
-              ),
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: PageView(
-                    controller: pageController,
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      Row(
-                        children:
-                            createColors(context, colors1 ?? Constants.colors1),
-                      ),
-                      Row(
-                        children:
-                            createColors(context, colors2 ?? Constants.colors2),
-                      ),
-                      Row(
-                        children:
-                            createColors(context, colors3 ?? Constants.colors3),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 8,
           ),
-          SmoothPageIndicator(
-            controller: pageController, // PageController
-            count: 3,
-            effect: const ScrollingDotsEffect(
-              spacing: 8,
-              activeDotColor: Colors.white,
-              dotColor: Colors.white24,
-              dotHeight: 8,
-              dotWidth: 8,
-              activeDotScale: 1,
+          child: SelectedColor(
+            icon: widget.icon,
+            selectedColor: widget.selectedColor,
+          ),
+        ),
+        SizedBox(height: 24),
+        GestureDetector(
+          onHorizontalDragEnd: (details) {
+            if (details.primaryVelocity! > 0) {
+              setState(() {
+                index = index + 1;
+                if (index > widget.colors.length - 1) {
+                  index = 0;
+                }
+              });
+            } else if (details.primaryVelocity! < 0) {
+              setState(() {
+                index = index - 1;
+                if (index < 0) {
+                  index = widget.colors.length - 1;
+                }
+              });
+            }
+          },
+          child: Center(
+            child: SizedBox(
+              height: 52,
+              child: AnimatedSwitcher(
+                duration: Duration(milliseconds: 200),
+                child: _buildColorRow(context),
+              ),
             ),
           ),
-          SizedBox(height: 6)
-        ],
-      ),
+        ),
+        SizedBox(height: 8),
+      ],
     );
   }
 
@@ -108,7 +113,7 @@ class FastColorPicker extends StatelessWidget {
                 color: c,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  width: c == selectedColor ? 4 : 2,
+                  width: c == widget.selectedColor ? 4 : 2,
                   color: Colors.white,
                 ),
                 boxShadow: [
@@ -121,7 +126,7 @@ class FastColorPicker extends StatelessWidget {
             ),
           ),
           onTap: () {
-            onColorSelected.call(c);
+            widget.onColorSelected.call(c);
           },
           useCache: false,
           scaleCoefficient: 0.9,
@@ -150,8 +155,8 @@ class SelectedColor extends StatelessWidget {
   final Color selectedColor;
   final IconData? icon;
 
-  const SelectedColor({Key? key, required this.selectedColor, this.icon})
-      : super(key: key);
+  const SelectedColor({Key? key, required this.selectedColor, this.icon}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -160,9 +165,7 @@ class SelectedColor extends StatelessWidget {
       child: icon != null
           ? Icon(
               icon,
-              color: selectedColor.computeLuminance() > 0.5
-                  ? Colors.black
-                  : Colors.white,
+              color: selectedColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
               size: 22,
             )
           : null,
